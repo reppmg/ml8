@@ -3,13 +3,22 @@ from matplotlib import pyplot
 from statsmodels.tsa.ar_model import AR
 from sklearn.metrics import mean_squared_error
 import numpy as np
-from utils import lcm
+import numpy
+import matplotlib.pyplot as plt
+from pandas import read_csv
+import math
+import tensorflow
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import LSTM
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error
 
 a = [13, 11, 6]
 b = [3, 4, 11]  # b/2pi
 c = [14.88, 1.88, 7.22]
 T = 2 * math.pi
-print(T )
+print(T)
 
 
 def fun(x):
@@ -22,8 +31,9 @@ y = np.array([fun(i) for i in x])
 print(x)
 print(y)
 
-x_train, x_test = x[1:len(x) // 2], x[len(x) // 2:]
-train, test = y[1:len(y) // 2], y[len(y) // 2:]
+train_size = len(x) // 2
+x_train, x_test = x[1:train_size], x[train_size:]
+train, test = y[1:train_size], y[train_size:]
 # train autoregression
 model = AR(train)
 model_fit = model.fit()
@@ -38,4 +48,40 @@ print('Test MSE: %.3f' % error)
 # plot results
 pyplot.plot(x_test, test)
 pyplot.plot(x_test, predictions, color='red')
+
+
+# convert an array of values into a dataset matrix
+def create_dataset(dataset, look_back=1):
+    dataX, dataY = [], []
+    for i in range(len(dataset) - look_back - 1):
+        a = dataset[i:(i + look_back), 0]
+        dataX.append(a)
+        dataY.append(dataset[i + look_back, 0])
+    return numpy.array(dataX), numpy.array(dataY)
+
+
+# normalize the dataset
+scaler = MinMaxScaler(feature_range=(0, 1))
+dataset = np.reshape(y, (y.shape[0], 1))
+dataset = scaler.fit_transform(dataset)
+
+# reshape into X=t and Y=t+1
+look_back = 11
+train, test = dataset[0:train_size, :], dataset[train_size - look_back:len(dataset), :]
+trainX, trainY = create_dataset(train, look_back)
+testX, testY = create_dataset(test, look_back)
+print(trainX)
+# reshape input to be [samples, time steps, features]
+trainX = numpy.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))
+testX = numpy.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
+
+lstm_model = Sequential()
+lstm_model.add(LSTM(4, input_shape=(1, look_back)))
+lstm_model.add(Dense(1))
+lstm_model.compile(loss='mean_squared_error', optimizer='adam')
+lstm_model.fit(trainX, trainY, epochs=100, batch_size=1, verbose=2)
+lstm_prediction = lstm_model.predict(testX)
+lstm_prediction = scaler.inverse_transform(lstm_prediction)
+pyplot.plot(x_test[0:len(lstm_prediction)], lstm_prediction, color='green')
+
 pyplot.show()

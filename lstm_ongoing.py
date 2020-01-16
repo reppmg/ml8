@@ -17,6 +17,7 @@ c = [14.88, 1.88, 7.22]
 T = 2 * math.pi
 print(T)
 
+np.random.seed(6)
 
 def fun(x):
     result = [a[i] * math.sin(b[i] * x + c[i]) for i in range(len(a))]
@@ -33,7 +34,7 @@ train_size = len(x) // test_to_train
 x_train, x_test = x[1:train_size], x[train_size:]
 train, test = y[1:train_size], y[train_size:]
 # train autoregression
-model = AR(y[0:len(y)//2])
+model = AR(y[0:len(y) // 2])
 model_fit = model.fit()
 print('Lag: %s' % model_fit.k_ar)
 print('Coefficients: %s' % model_fit.params)
@@ -45,7 +46,9 @@ error = mean_squared_error(test, predictions)
 print('Test MSE: %.3f' % error)
 # plot results
 pyplot.plot(x_test, test)
-pyplot.plot(x_test, predictions, color='red')
+
+
+# pyplot.plot(x_test, predictions, color='red')
 
 
 # convert an array of values into a dataset matrix
@@ -77,10 +80,18 @@ lstm_model = Sequential()
 lstm_model.add(LSTM(4, input_shape=(1, look_back)))
 lstm_model.add(Dense(1))
 lstm_model.compile(loss='mean_squared_error', optimizer='adam')
-# lstm_model.fit(trainX, trainY, epochs=100, batch_size=1, verbose=2)
-# lstm_prediction = lstm_model.predict(testX)
-# lstm_prediction = scaler.inverse_transform(lstm_prediction)
-# pyplot.plot(x_test[0:len(lstm_prediction)], lstm_prediction, color='green')
+lstm_model.fit(trainX, trainY, epochs=100, batch_size=1, verbose=2)
+lstm_prediction = []
+window = dataset[train_size - look_back:train_size]
+for i in range(len(x_test)):
+    testX = numpy.reshape(window, (1, 1, look_back))
+    scaled_prediction = lstm_model.predict(testX)
+    current_prediction = scaler.inverse_transform(scaled_prediction)[0][0]
+    window = np.roll(window, -1)
+    window[look_back - 1] = scaled_prediction
+    lstm_prediction.append(current_prediction)
+
+pyplot.plot(x_test[0:len(lstm_prediction)], lstm_prediction, color='green')
 
 pyplot.title("Ongoing " + ("dynamic" if dynamic else "static"))
 pyplot.legend(["expected", "AR", "LSTM"])

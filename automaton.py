@@ -48,7 +48,7 @@ coef = [np.random.rand() + 0.01 for i in range(sentece_length)]
 coef[1] = 0.00000001
 # feed
 symbols = x[1]
-print(text[0:sentece_length], end="")
+print(text[sentece_length:2*sentece_length], end="")
 for i in range(100):
     preds = [(symbols[j] * coef[j]) for j in range(sentece_length)]
     preds = np.sum(preds, axis=0)
